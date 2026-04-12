@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: quant-biz-service
+
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:quant}
+    username: ${DB_USER:quant}
+    password: ${DB_PASSWORD:quant_dev_2026}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  data:
+    redis:
+      url: redis://${REDIS_HOST:localhost}:${REDIS_PORT:6379}
+
+server:
+  port: ${SERVER_PORT:8081}
+
+jwt:
+  secret: ${JWT_SECRET:quant-system-default-jwt-secret-key-2026}
+  access-expire-seconds: 3600
+  refresh-expire-seconds: 604800
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
