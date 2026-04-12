@@ -1,0 +1,53 @@
+# ─── OS ─────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── IDE ────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── Environment ────────────────
+.env
+.env.local
+.env.*.local
+
+# ─── Python ─────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+.venv/
+venv/
+*.egg
+
+# ─── Java ───────────────────────
+*.class
+*.jar
+*.war
+build/
+.gradle/
+target/
+out/
+!gradle-wrapper.jar
+
+# ─── Go ─────────────────────────
+vendor/
+
+# ─── Node / Frontend ───────────
+node_modules/
+.expo/
+*.tgz
+
+# ─── Generated Proto ───────────
+quant-proto/gen/
+
+# ─── Docker Volumes ─────────────
+docker/postgres-data/
+docker/redis-data/
+
+# ─── Logs ───────────────────────
+*.log
+logs/

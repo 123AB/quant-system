@@ -1,0 +1,67 @@
+syntax = "proto3";
+package quant.fund;
+option java_package = "com.quant.fund.proto";
+option go_package = "quant-proto/fund";
+
+import "google/protobuf/timestamp.proto";
+import "common/enums.proto";
+
+service FundService {
+    rpc GetLofPremium(GetLofPremiumRequest) returns (GetLofPremiumResponse);
+    rpc GetLofPremiumBatch(GetLofPremiumBatchRequest) returns (GetLofPremiumBatchResponse);
+    rpc GetFundConfig(GetFundConfigRequest) returns (GetFundConfigResponse);
+    rpc ListFundConfigs(ListFundConfigsRequest) returns (ListFundConfigsResponse);
+}
+
+message LofPremiumData {
+    string fund_code = 1;
+    string fund_name = 2;
+    double market_price = 3;
+    double estimated_nav = 4;
+    double official_nav = 5;
+    double premium_pct = 6;
+    double index_change_pct = 7;
+    string nav_source = 8;
+    google.protobuf.Timestamp updated_at = 9;
+}
+
+message GetLofPremiumRequest {
+    string fund_code = 1;
+}
+
+message GetLofPremiumResponse {
+    LofPremiumData data = 1;
+}
+
+message GetLofPremiumBatchRequest {
+    repeated string fund_codes = 1;
+}
+
+message GetLofPremiumBatchResponse {
+    repeated LofPremiumData data = 1;
+}
+
+message FundConfigData {
+    string code = 1;
+    string name = 2;
+    string exchange = 3;
+    string index_sina = 4;
+    string index_name = 5;
+    bool   is_active = 6;
+}
+
+message GetFundConfigRequest {
+    string code = 1;
+}
+
+message GetFundConfigResponse {
+    FundConfigData data = 1;
+}
+
+message ListFundConfigsRequest {
+    bool active_only = 1;
+}
+
+message ListFundConfigsResponse {
+    repeated FundConfigData data = 1;
+}

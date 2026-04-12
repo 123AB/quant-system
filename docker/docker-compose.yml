@@ -1,0 +1,211 @@
+services:
+
+  # ─── Infrastructure ──────────────────────────────────────
+
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: quant-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-quant}
+      POSTGRES_USER: ${POSTGRES_USER:-quant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quant_dev_2026}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quant} -d ${POSTGRES_DB:-quant}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    networks:
+      - quant-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: quant-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 200mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.25"
+    networks:
+      - quant-net
+
+  # ─── Java Business Layer ─────────────────────────────────
+
+  biz-service:
+    build:
+      context: ./biz-service
+      dockerfile: Dockerfile
+    container_name: quant-biz-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-quant}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-quant}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-quant_dev_2026}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      GRPC_SERVER_PORT: 9001
+      SIGNAL_AGENT_HOST: signal-agent
+      SIGNAL_AGENT_PORT: 50052
+      JAVA_OPTS: >-
+        -Xms256m -Xmx384m
+        -XX:+UseZGC
+        -Dspring.threads.virtual.enabled=true
+    ports:
+      - "9001:9001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    networks:
+      - quant-net
+
+  # ─── Python Agent Layer ──────────────────────────────────
+
+  data-pipeline:
+    build:
+      context: ./data-pipeline
+      dockerfile: Dockerfile
+    container_name: quant-data-pipeline
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quant}:${POSTGRES_PASSWORD:-quant_dev_2026}@postgres:5432/${POSTGRES_DB:-quant}
+      PIPELINE_INTERVAL_TRADING: "30"
+      PIPELINE_INTERVAL_OFF_HOURS: "1800"
+      TZ: Asia/Shanghai
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    networks:
+      - quant-net
+
+  signal-agent:
+    build:
+      context: ./signal-agent
+      dockerfile: Dockerfile
+    container_name: quant-signal-agent
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quant}:${POSTGRES_PASSWORD:-quant_dev_2026}@postgres:5432/${POSTGRES_DB:-quant}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
+      SIGNAL_INTERVAL_MINUTES: "30"
+      GRPC_PORT: "50052"
+      TZ: Asia/Shanghai
+    ports:
+      - "50052:50052"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "0.5"
+    networks:
+      - quant-net
+
+  # ─── Go Gateway ──────────────────────────────────────────
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: quant-gateway
+    restart: unless-stopped
+    environment:
+      BIZ_SERVICE_ADDR: biz-service:9001
+      SIGNAL_AGENT_ADDR: signal-agent:50052
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: ${JWT_SECRET:-quant_jwt_secret_change_in_prod}
+      HTTP_PORT: "8080"
+      GRPC_PORT: "8443"
+    ports:
+      - "8080:8080"
+      - "8443:8443"
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    networks:
+      - quant-net
+
+  # ─── Frontend ────────────────────────────────────────────
+
+  frontend:
+    image: nginx:1.27-alpine
+    container_name: quant-frontend
+    restart: unless-stopped
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.25"
+    networks:
+      - quant-net
+
+networks:
+  quant-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local

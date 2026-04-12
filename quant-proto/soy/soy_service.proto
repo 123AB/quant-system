@@ -1,0 +1,78 @@
+syntax = "proto3";
+package quant.soy;
+option java_package = "com.quant.soy.proto";
+option go_package = "quant-proto/soy";
+
+import "google/protobuf/timestamp.proto";
+import "common/enums.proto";
+import "common/market_context.proto";
+
+service SoyService {
+    rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+    rpc GetCrushMargin(GetCrushMarginRequest) returns (GetCrushMarginResponse);
+    rpc GetCrushMarginHistory(GetCrushMarginHistoryRequest) returns (GetCrushMarginHistoryResponse);
+    rpc GetFactorSignal(GetFactorSignalRequest) returns (GetFactorSignalResponse);
+    rpc GetBasis(GetBasisRequest) returns (GetBasisResponse);
+    rpc GetWasde(GetWasdeRequest) returns (GetWasdeResponse);
+    rpc GetCot(GetCotRequest) returns (GetCotResponse);
+}
+
+message GetDashboardRequest {}
+
+message GetDashboardResponse {
+    quant.common.MarketContext market = 1;
+    quant.common.FactorSignal signal = 2;
+    google.protobuf.Timestamp updated_at = 3;
+}
+
+message GetCrushMarginRequest {
+    optional double meal_price = 1;
+    optional double oil_price = 2;
+    optional double cbot_cents = 3;
+}
+
+message GetCrushMarginResponse {
+    quant.common.CrushMargin data = 1;
+}
+
+message GetCrushMarginHistoryRequest {
+    google.protobuf.Timestamp start_time = 1;
+    google.protobuf.Timestamp end_time = 2;
+    string interval = 3;
+}
+
+message CrushMarginHistoryPoint {
+    google.protobuf.Timestamp time = 1;
+    double crush_margin = 2;
+    quant.common.CrushSignal signal = 3;
+}
+
+message GetCrushMarginHistoryResponse {
+    repeated CrushMarginHistoryPoint data = 1;
+}
+
+message GetFactorSignalRequest {}
+
+message GetFactorSignalResponse {
+    quant.common.FactorSignal data = 1;
+}
+
+message GetBasisRequest {}
+
+message GetBasisResponse {
+    repeated quant.common.BasisData data = 1;
+}
+
+message GetWasdeRequest {
+    string region = 1;
+}
+
+message GetWasdeResponse {
+    repeated quant.common.UsdaPsd data = 1;
+}
+
+message GetCotRequest {}
+
+message GetCotResponse {
+    repeated quant.common.CotPositioning data = 1;
+}

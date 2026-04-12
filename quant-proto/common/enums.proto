@@ -1,0 +1,45 @@
+syntax = "proto3";
+package quant.common;
+option java_package = "com.quant.common.proto";
+option go_package = "quant-proto/common";
+
+enum DataQuality {
+    DATA_QUALITY_UNSPECIFIED = 0;
+    LIVE = 1;
+    DELAYED = 2;
+    CACHED = 3;
+    STALE = 4;
+}
+
+enum SignalDirection {
+    SIGNAL_DIRECTION_UNSPECIFIED = 0;
+    BULLISH = 1;
+    NEUTRAL = 2;
+    BEARISH = 3;
+}
+
+enum SignalLevel {
+    SIGNAL_LEVEL_UNSPECIFIED = 0;
+    STRONG_BULLISH = 1;
+    BULLISH_LEVEL = 2;
+    NEUTRAL_BULLISH = 3;
+    NEUTRAL_LEVEL = 4;
+    BEARISH_LEVEL = 5;
+}
+
+enum CrushSignal {
+    CRUSH_SIGNAL_UNSPECIFIED = 0;
+    RICH = 1;
+    NORMAL = 2;
+    THIN = 3;
+    LOSS = 4;
+}
+
+enum AlertOperator {
+    ALERT_OPERATOR_UNSPECIFIED = 0;
+    GT = 1;
+    LT = 2;
+    GTE = 3;
+    LTE = 4;
+    ABS_GT = 5;
+}

@@ -1,0 +1,43 @@
+services:
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: quant-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@quant.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - quant-net
+
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: quant-redis-insight
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+    networks:
+      - quant-net
+
+  biz-service:
+    environment:
+      JAVA_OPTS: >-
+        -Xms256m -Xmx384m
+        -XX:+UseZGC
+        -Dspring.threads.virtual.enabled=true
+        -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    ports:
+      - "9001:9001"
+      - "5005:5005"

@@ -1,0 +1,120 @@
+syntax = "proto3";
+package quant.common;
+option java_package = "com.quant.common.proto";
+option go_package = "quant-proto/common";
+
+import "google/protobuf/timestamp.proto";
+import "common/enums.proto";
+
+message FuturesQuote {
+    string symbol = 1;
+    string name = 2;
+    string exchange = 3;
+    double open = 4;
+    double high = 5;
+    double low = 6;
+    double close = 7;
+    int64  volume = 8;
+    double amount = 9;
+    double change_pct = 10;
+    string unit = 11;
+    google.protobuf.Timestamp updated_at = 12;
+}
+
+message CrushMargin {
+    double meal_price = 1;
+    double oil_price = 2;
+    double cbot_cents = 3;
+    double usdcny = 4;
+    double freight_usd = 5;
+    double cbot_usd_per_ton = 10;
+    double cif_usd = 11;
+    double cif_cny = 12;
+    double tariff_cny = 13;
+    double vat_cny = 14;
+    double port_misc_cny = 15;
+    double landed_cost_cny = 16;
+    double processing_fee_cny = 17;
+    double total_bean_cost_cny = 18;
+    double meal_revenue_cny = 19;
+    double oil_revenue_cny = 20;
+    double total_revenue_cny = 21;
+    double crush_margin_cny = 22;
+    bool   is_profitable = 23;
+    CrushSignal signal = 24;
+}
+
+message BasisData {
+    string contract = 1;
+    double spot_price = 2;
+    double futures_price = 3;
+    double basis = 4;
+    string structure = 5;
+}
+
+message UsdaPsd {
+    string region = 1;
+    string report_month = 2;
+    double production = 3;
+    double imports = 4;
+    double domestic_consumption = 5;
+    double exports = 6;
+    double ending_stocks = 7;
+    double stocks_to_use_ratio = 8;
+}
+
+message CotPositioning {
+    string report_date = 1;
+    int64  non_commercial_long = 2;
+    int64  non_commercial_short = 3;
+    int64  non_commercial_net = 4;
+    int64  commercial_long = 5;
+    int64  commercial_short = 6;
+    int64  commercial_net = 7;
+    int64  open_interest = 8;
+    double net_change_5d = 9;
+}
+
+message ValidationResult {
+    string field = 1;
+    string status = 2;
+    double primary_value = 3;
+    double reference_value = 4;
+    double deviation_pct = 5;
+    string detail = 6;
+}
+
+message FactorDetail {
+    string name = 1;
+    string label = 2;
+    double value = 3;
+    string signal = 4;
+    string description = 5;
+    int32  points = 6;
+}
+
+message FactorSignal {
+    string date = 1;
+    int32  composite_score = 2;
+    string composite_signal = 3;
+    SignalLevel signal_level = 4;
+    repeated FactorDetail factors = 5;
+    repeated int32  key_price_levels = 6;
+    repeated string analyst_rules = 7;
+}
+
+message MarketContext {
+    string snapshot_id = 1;
+    google.protobuf.Timestamp timestamp = 2;
+    DataQuality data_quality = 3;
+    map<string, FuturesQuote> dce_quotes = 10;
+    FuturesQuote cbot_soybeans = 11;
+    double usdcny = 12;
+    CrushMargin crush_margin = 20;
+    repeated BasisData basis = 21;
+    optional UsdaPsd usda_world = 30;
+    optional UsdaPsd usda_china = 31;
+    optional CotPositioning cot = 32;
+    optional FactorSignal factor_signal = 40;
+    repeated ValidationResult validations = 50;
+}

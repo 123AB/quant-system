@@ -1,0 +1,71 @@
+syntax = "proto3";
+package quant.agent;
+option java_package = "com.quant.agent.proto";
+option go_package = "quant-proto/agent";
+
+import "google/protobuf/timestamp.proto";
+import "common/enums.proto";
+import "common/market_context.proto";
+
+service SignalAgentService {
+    rpc SynthesizeSignal(SynthesizeSignalRequest) returns (SynthesizeSignalResponse);
+    rpc GetLatestSignal(GetLatestSignalRequest) returns (GetLatestSignalResponse);
+    rpc GetSignalHistory(GetSignalHistoryRequest) returns (GetSignalHistoryResponse);
+    rpc GetPipelineStatus(GetPipelineStatusRequest) returns (GetPipelineStatusResponse);
+}
+
+message SynthesizeSignalRequest {
+    quant.common.MarketContext context = 1;
+    bool force = 2;
+}
+
+message SynthesisResult {
+    quant.common.SignalDirection direction = 1;
+    double confidence = 2;
+    int32  composite_score = 3;
+    string reasoning = 4;
+    repeated string key_factors = 5;
+    bool escalated = 6;
+    string escalate_reason = 7;
+    google.protobuf.Timestamp timestamp = 8;
+}
+
+message SynthesizeSignalResponse {
+    SynthesisResult result = 1;
+}
+
+message GetLatestSignalRequest {
+    string signal_type = 1;
+}
+
+message GetLatestSignalResponse {
+    SynthesisResult result = 1;
+}
+
+message GetSignalHistoryRequest {
+    string signal_type = 1;
+    google.protobuf.Timestamp start_time = 2;
+    google.protobuf.Timestamp end_time = 3;
+    int32  limit = 4;
+}
+
+message GetSignalHistoryResponse {
+    repeated SynthesisResult results = 1;
+}
+
+message GetPipelineStatusRequest {}
+
+message PipelinePhaseStatus {
+    string phase_name = 1;
+    string status = 2;
+    int64  duration_ms = 3;
+    string error = 4;
+}
+
+message GetPipelineStatusResponse {
+    string workflow_id = 1;
+    string current_phase = 2;
+    repeated PipelinePhaseStatus phases = 3;
+    google.protobuf.Timestamp last_run = 4;
+    google.protobuf.Timestamp next_run = 5;
+}

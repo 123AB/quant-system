@@ -1,0 +1,71 @@
+syntax = "proto3";
+package quant.alert;
+option java_package = "com.quant.alert.proto";
+option go_package = "quant-proto/alert";
+
+import "google/protobuf/timestamp.proto";
+import "common/enums.proto";
+
+service AlertService {
+    rpc CreateRule(CreateRuleRequest) returns (CreateRuleResponse);
+    rpc ListRules(ListRulesRequest) returns (ListRulesResponse);
+    rpc DeleteRule(DeleteRuleRequest) returns (DeleteRuleResponse);
+    rpc StreamAlerts(StreamAlertsRequest) returns (stream AlertEvent);
+}
+
+message AlertRule {
+    int32  id = 1;
+    int64  user_id = 2;
+    string metric = 3;
+    quant.common.AlertOperator operator = 4;
+    double threshold = 5;
+    string channel = 6;
+    string description = 7;
+    bool   is_active = 8;
+    google.protobuf.Timestamp last_triggered_at = 9;
+    google.protobuf.Timestamp created_at = 10;
+}
+
+message CreateRuleRequest {
+    int64  user_id = 1;
+    string metric = 2;
+    quant.common.AlertOperator operator = 3;
+    double threshold = 4;
+    string channel = 5;
+    string description = 6;
+}
+
+message CreateRuleResponse {
+    AlertRule rule = 1;
+}
+
+message ListRulesRequest {
+    int64 user_id = 1;
+}
+
+message ListRulesResponse {
+    repeated AlertRule rules = 1;
+}
+
+message DeleteRuleRequest {
+    int32 id = 1;
+    int64 user_id = 2;
+}
+
+message DeleteRuleResponse {
+    bool success = 1;
+}
+
+message StreamAlertsRequest {
+    int64 user_id = 1;
+}
+
+message AlertEvent {
+    string alert_id = 1;
+    int32  rule_id = 2;
+    string metric = 3;
+    double current_value = 4;
+    double threshold = 5;
+    string message = 6;
+    google.protobuf.Timestamp triggered_at = 7;
+}
