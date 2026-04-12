@@ -1,0 +1,33 @@
+server:
+  addr: ":8080"
+  read_timeout: 15s
+  write_timeout: 15s
+
+upstream:
+  biz_service: "http://biz-service:8081"
+  timeout: 5s
+
+jwt:
+  secret: "quant-system-default-jwt-secret-key-2026"
+  skip_paths:
+    - "/health"
+    - "/api/auth/login"
+    - "/api/auth/register"
+    - "/api/soy/"
+    - "/api/fund/"
+
+rate_limit:
+  global_qps: 5000
+  per_user_qps: 50
+  window_seconds: 60
+
+redis:
+  addr: "redis:6379"
+  password: ""
+  db: 0
+
+websocket:
+  path: "/ws/quotes"
+  redis_channel: "quant:ws_push"
+  read_buffer_size: 1024
+  write_buffer_size: 1024
