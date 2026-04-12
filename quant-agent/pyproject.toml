@@ -1,0 +1,23 @@
+[project]
+name = "quant-agent"
+version = "0.1.0"
+description = "Soybean research MCP server + data tools"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]",
+    "akshare",
+    "redis",
+    "psycopg[binary]",
+    "pandas",
+    "httpx",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
