@@ -59,25 +59,26 @@ services:
 
   biz-service:
     build:
-      context: ./biz-service
-      dockerfile: Dockerfile
+      context: ../quant-services
+      dockerfile: ../docker/biz-service/Dockerfile
     container_name: quant-biz-service
     restart: unless-stopped
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-quant}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-quant}
-      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-quant_dev_2026}
-      SPRING_DATA_REDIS_HOST: redis
-      SPRING_DATA_REDIS_PORT: 6379
-      GRPC_SERVER_PORT: 9001
-      SIGNAL_AGENT_HOST: signal-agent
-      SIGNAL_AGENT_PORT: 50052
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-quant}
+      DB_USER: ${POSTGRES_USER:-quant}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-quant_dev_2026}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      SERVER_PORT: 8081
+      JWT_SECRET: ${JWT_SECRET:-quant-system-default-jwt-secret-key-2026}
       JAVA_OPTS: >-
         -Xms256m -Xmx384m
         -XX:+UseZGC
         -Dspring.threads.virtual.enabled=true
     ports:
-      - "9001:9001"
+      - "8081:8081"
     depends_on:
       postgres:
         condition: service_healthy
@@ -95,8 +96,8 @@ services:
 
   data-pipeline:
     build:
-      context: ./data-pipeline
-      dockerfile: Dockerfile
+      context: ../quant-agent
+      dockerfile: ../docker/data-pipeline/Dockerfile
     container_name: quant-data-pipeline
     restart: unless-stopped
     environment:
@@ -120,8 +121,8 @@ services:
 
   signal-agent:
     build:
-      context: ./signal-agent
-      dockerfile: Dockerfile
+      context: ../quant-agent
+      dockerfile: ../docker/signal-agent/Dockerfile
     container_name: quant-signal-agent
     restart: unless-stopped
     environment:
@@ -133,10 +134,7 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
       SIGNAL_INTERVAL_MINUTES: "30"
-      GRPC_PORT: "50052"
       TZ: Asia/Shanghai
-    ports:
-      - "50052:50052"
     depends_on:
       postgres:
         condition: service_healthy
@@ -154,20 +152,17 @@ services:
 
   gateway:
     build:
-      context: ./gateway
-      dockerfile: Dockerfile
+      context: ../quant-gateway
+      dockerfile: ../docker/gateway/Dockerfile
     container_name: quant-gateway
     restart: unless-stopped
     environment:
-      BIZ_SERVICE_ADDR: biz-service:9001
-      SIGNAL_AGENT_ADDR: signal-agent:50052
+      LISTEN_ADDR: ":8080"
+      BIZ_SERVICE_URL: http://biz-service:8081
       REDIS_ADDR: redis:6379
-      JWT_SECRET: ${JWT_SECRET:-quant_jwt_secret_change_in_prod}
-      HTTP_PORT: "8080"
-      GRPC_PORT: "8443"
+      JWT_SECRET: ${JWT_SECRET:-quant-system-default-jwt-secret-key-2026}
     ports:
       - "8080:8080"
-      - "8443:8443"
     depends_on:
       redis:
         condition: service_healthy

@@ -1,11 +1,11 @@
 FROM python:3.12-slim
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir pip --upgrade
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir . 2>/dev/null || pip install --no-cache-dir akshare redis psycopg[binary] pandas httpx apscheduler langgraph langchain-openai langchain-anthropic langchain-core
+
 COPY src/ ./src/
-ENV PYTHONUNBUFFERED=1 TZ=Asia/Shanghai
-EXPOSE 50052
+
+ENV TZ=Asia/Shanghai
 CMD ["python", "-m", "src.signal_agent.main"]

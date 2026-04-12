@@ -1,46 +1,75 @@
-# Quant System
+# Quant System — 量化交易微服务系统
 
-量化交易系统 — Go Gateway + Java Business + Python Agent + TimescaleDB + Redis
+LOF 基金套利 + 大豆期货研究的量化交易平台，采用 Go/Java/Python 多语言微服务架构。
 
 ## Architecture
 
 ```
-Client (Expo/RN)
-    │
-    ▼
-┌─────────────────────┐
-│  Go Gateway (Kratos)│   REST / WebSocket
-│  - JWT auth         │
-│  - Rate limit       │
-│  - Circuit breaker  │
-└─────────┬───────────┘
-          │ gRPC
-    ┌─────┴─────┐
-    ▼           ▼
-┌──────────┐  ┌───────────────┐
-│  Java    │  │  Python Agent │
-│  Biz Svc │  │  - pipeline   │
-│  (Spring)│  │  - signal     │
-└────┬─────┘  └───────┬───────┘
-     │                │
-     ├────────────────┤
-     ▼                ▼
-┌──────────┐   ┌──────────┐
-│PostgreSQL│   │  Redis   │
-│+Timescale│   │  cache   │
-└──────────┘   └──────────┘
+┌─────────────┐     ┌─────────────────────────────────────────┐
+│   Frontend   │────▶│  Go Gateway (quant-gateway :8080)       │
+│   (Nginx)    │     │  JWT · Rate Limit · WebSocket Hub       │
+└─────────────┘     └──────────┬───────────────────────────────┘
+                               │ HTTP reverse proxy
+                    ┌──────────▼───────────────────────────────┐
+                    │  Java biz-service (Spring Boot :8081)     │
+                    │  REST API · Fund · Soy · Auth · Alert    │
+                    └──────────┬───────────────────────────────┘
+                               │ JPA / Redis
+              ┌────────────────┼────────────────┐
+    ┌─────────▼──────┐  ┌──────▼──────┐  ┌──────▼──────────────┐
+    │  PostgreSQL +   │  │   Redis 7   │  │  Python Agents      │
+    │  TimescaleDB    │  │  Cache/Pub  │  │  data-pipeline FSM  │
+    │  :5432          │  │  :6379      │  │  signal-agent LLM   │
+    └────────────────┘  └─────────────┘  │  MCP Server          │
+                                         └──────────────────────┘
 ```
 
 ## Tech Stack
 
-| Layer    | Language | Framework          | Purpose                                    |
-|----------|----------|--------------------|--------------------------------------------|
-| Gateway  | Go 1.22  | Kratos             | REST→gRPC 转换, JWT, 限流, 熔断, WebSocket |
-| Business | Java 21  | Spring Boot 3.4    | 压榨利润计算, 因子信号, LOF 溢价, 用户管理  |
-| Agent    | Python 3.12 | LangGraph + APScheduler | 数据管道 FSM, LLM 信号合成, MCP Server |
-| Database | -        | PostgreSQL 16 + TimescaleDB | 时序数据, 关系数据, JSONB 文档       |
-| Cache    | -        | Redis 7            | 行情缓存, Pub/Sub, Streams 异步消息         |
-| Frontend | TypeScript | Expo / React Native | 移动端 dashboard                        |
+| Layer | Technology |
+|-------|-----------|
+| Gateway | Go 1.22, gorilla/websocket, go-redis |
+| Business | Java 21, Spring Boot 3.4, Virtual Threads, JPA |
+| Data Pipeline | Python 3.12, APScheduler, FSM (4-phase) |
+| Signal Agent | Python 3.12, LangGraph, OpenAI/Anthropic/Qwen |
+| MCP Server | Python, FastMCP (6 tools, 2 resources) |
+| Database | PostgreSQL 16 + TimescaleDB (hypertables) |
+| Cache/Messaging | Redis 7 (cache, Pub/Sub, Streams) |
+| Proto | Protobuf 3, buf CLI |
+
+## Project Structure
+
+```
+quant-system/
+├── quant-gateway/          # Go API Gateway
+│   ├── cmd/gateway/        # Entry point
+│   ├── internal/           # Middleware, router, WebSocket, proxy
+│   └── configs/            # YAML config
+├── quant-services/         # Java Spring Boot (Gradle multi-module)
+│   ├── quant-common/       # Domain objects, enums
+│   ├── soy-module/         # Crush margin, factor signal, entities
+│   ├── fund-module/        # LOF premium, fund config
+│   ├── user-module/        # JWT auth, user CRUD
+│   ├── alert-module/       # Redis stream consumer, alert rules
+│   └── biz-service/        # Spring Boot main app + REST controllers
+├── quant-agent/            # Python agent layer
+│   └── src/
+│       ├── data_pipeline/  # FSM: health → fetch → validate → publish
+│       ├── signal_agent/   # LangGraph: gather → compress → reason → emit
+│       ├── mcp_server/     # FastMCP for Cursor IDE
+│       ├── fetchers/       # DCE, CBOT, FX, USDA, COT data sources
+│       ├── crusher/        # Crush margin calculator
+│       ├── validators/     # Cross-source validation
+│       └── factor_signal/  # 8-factor scoring engine
+├── quant-proto/            # Protobuf definitions (shared)
+│   ├── common/             # MarketContext, enums
+│   ├── fund/               # FundService
+│   ├── soy/                # SoyService
+│   ├── user/               # UserService
+│   ├── alert/              # AlertService
+│   └── agent/              # SignalService
+└── docker/                 # Docker Compose + Dockerfiles + init.sql
+```
 
 ## Quick Start
 
@@ -49,62 +78,56 @@ Client (Expo/RN)
 git clone https://github.com/123AB/quant-system.git
 cd quant-system
 
-# 2. Environment
+# 2. Copy env
 cp .env.example .env
-# Edit .env with your secrets
+# Edit .env: set LLM_PROVIDER, API keys, etc.
 
 # 3. Start infrastructure
 cd docker
 docker compose up -d postgres redis
 
 # 4. Verify
-docker compose exec postgres psql -U quant -c "SELECT * FROM timescaledb_information.hypertables;"
+docker compose exec postgres psql -U quant -d quant -c "\\dt"
 docker compose exec redis redis-cli ping
+
+# 5. Start all services (when Docker images are built)
+docker compose up -d
 ```
 
-## Project Structure
+## Services
+
+| Service | Port | Description |
+|---------|------|-------------|
+| Gateway | 8080 | REST API entry + WebSocket |
+| biz-service | 8081 | Java business logic |
+| data-pipeline | — | Scheduled data fetching (30s/30min) |
+| signal-agent | — | LLM signal synthesis (30min) |
+| PostgreSQL | 5432 | TimescaleDB (hypertables, continuous aggregates) |
+| Redis | 6379 | Cache, Pub/Sub, Streams |
+| Frontend | 80 | Nginx static + proxy |
+
+## MCP Server (Cursor IDE)
+
+The MCP server exposes 6 tools for use in Cursor:
+- `get_dce_futures` — DCE commodity futures
+- `get_crush_margin` — Soybean crush margin calculation
+- `get_usda_supply_demand` — USDA world/China balance sheet
+- `get_cot_positioning` — CFTC COT positioning
+- `get_factor_signal` — 8-factor quantitative scoring
+- `validate_data_quality` — Cross-source data validation
+
+Configure in `~/.cursor/mcp.json` (see `.cursor/mcp.json` for reference).
+
+## Data Flow
 
 ```
-quant-system/
-├── docker/
-│   ├── docker-compose.yml       # Production compose
-│   ├── docker-compose.dev.yml   # Dev overrides (pgAdmin, RedisInsight)
-│   ├── init.sql                 # DDL (TimescaleDB hypertables + tables)
-│   ├── gateway/Dockerfile
-│   ├── biz-service/Dockerfile
-│   ├── data-pipeline/Dockerfile
-│   ├── signal-agent/Dockerfile
-│   └── frontend/nginx.conf
-├── quant-proto/                 # Protobuf definitions
-│   ├── buf.yaml
-│   ├── buf.gen.yaml
-│   ├── common/                  # Shared types (MarketContext, enums)
-│   ├── fund/                    # Fund service
-│   ├── soy/                     # Soy service
-│   ├── user/                    # User service
-│   ├── alert/                   # Alert service
-│   └── agent/                   # Signal agent service
-├── .env.example
-├── .gitignore
-└── README.md
+akshare/Sina → data-pipeline (FSM) → PG hypertable + Redis cache
+                                          ↓
+                              signal-agent (LangGraph + LLM)
+                                          ↓
+                              Redis Stream → alert-module → WebSocket
 ```
 
-## Design Docs
+## Design Documents
 
-See [quant-system-design/](../quant-system-design/) for the full architecture plan.
-
-## Containers (Phase 1)
-
-| Container      | Image                    | Port   | Resources        |
-|----------------|--------------------------|--------|------------------|
-| postgres       | timescale/timescaledb:pg16 | 5432 | 1 CPU, 1G RAM   |
-| redis          | redis:7-alpine           | 6379   | 0.25 CPU, 256M   |
-| biz-service    | custom (Java 21)         | 9001   | 1 CPU, 512M      |
-| data-pipeline  | custom (Python 3.12)     | -      | 0.5 CPU, 256M    |
-| signal-agent   | custom (Python 3.12)     | 50052  | 0.5 CPU, 512M    |
-| gateway        | custom (Go 1.22)         | 8080   | 0.5 CPU, 256M    |
-| frontend       | nginx:1.27-alpine        | 80     | 0.25 CPU, 128M   |
-
-## License
-
-MIT
+See `quant-system-design/` for detailed architecture docs (01–11).

@@ -1,10 +1,11 @@
 FROM python:3.12-slim
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential libpq-dev && \
-    rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir pip --upgrade
+
+COPY pyproject.toml .
+RUN pip install --no-cache-dir . 2>/dev/null || pip install --no-cache-dir akshare redis psycopg[binary] pandas httpx apscheduler
+
 COPY src/ ./src/
-ENV PYTHONUNBUFFERED=1 TZ=Asia/Shanghai
+
+ENV TZ=Asia/Shanghai
 CMD ["python", "-m", "src.data_pipeline.scheduler"]
