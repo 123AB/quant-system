@@ -11,6 +11,10 @@ dependencies = [
     "pandas",
     "httpx",
     "apscheduler",
+    "langgraph",
+    "langchain-openai",
+    "langchain-anthropic",
+    "langchain-core",
 ]
 
 [project.optional-dependencies]
