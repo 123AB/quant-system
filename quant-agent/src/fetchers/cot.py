@@ -24,15 +24,29 @@ def fetch_cot() -> dict:
         prev = df.iloc[-2] if len(df) > 1 else row
         soy_net = _safe_int(row.get("大豆-净仓位", 0))
         prev_soy_net = _safe_int(prev.get("大豆-净仓位", 0))
+        soy_long = _safe_int(row.get("大豆-多头仓位", 0))
+        soy_short = _safe_int(row.get("大豆-空头仓位", 0))
+        meal_long = _safe_int(row.get("豆粕-多头仓位", 0))
+        meal_short = _safe_int(row.get("豆粕-空头仓位", 0))
+        meal_net = _safe_int(row.get("豆粕-净仓位", 0))
         return {
             "date": str(row.get("日期", "")),
-            "soy_long": _safe_int(row.get("大豆-多头仓位", 0)),
-            "soy_short": _safe_int(row.get("大豆-空头仓位", 0)),
+            # Proto-aligned names (CotPositioning message)
+            "non_commercial_long": soy_long,
+            "non_commercial_short": soy_short,
+            "non_commercial_net": soy_net,
+            "net_change_5d": soy_net - prev_soy_net,
+            "commercial_long": meal_long,
+            "commercial_short": meal_short,
+            "commercial_net": meal_net,
+            # Legacy names (backward compatibility with fund-tracker frontend)
+            "soy_long": soy_long,
+            "soy_short": soy_short,
             "soy_net": soy_net,
             "soy_net_change": soy_net - prev_soy_net,
-            "meal_long": _safe_int(row.get("豆粕-多头仓位", 0)),
-            "meal_short": _safe_int(row.get("豆粕-空头仓位", 0)),
-            "meal_net": _safe_int(row.get("豆粕-净仓位", 0)),
+            "meal_long": meal_long,
+            "meal_short": meal_short,
+            "meal_net": meal_net,
         }
     except Exception as e:
         logger.warning("CFTC COT fetch failed: %s", e)

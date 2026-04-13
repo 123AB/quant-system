@@ -121,7 +121,7 @@ def compress_context(state: SignalState) -> dict:
     # P2: COT — only if abnormal
     cot = ctx.get("cot", {})
     if cot:
-        net_change = _safe_float(cot.get("soy_net_change"))
+        net_change = _safe_float(cot.get("net_change_5d") or cot.get("soy_net_change"))
         if net_change is not None and abs(net_change) > 20000:
             lines.append(f"\n## COT 持仓异常")
             lines.append(f"5日净变化: {net_change:.0f} 手（超过 2 万手阈值）")
