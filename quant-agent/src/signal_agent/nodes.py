@@ -262,7 +262,10 @@ def emit_signal(state: SignalState) -> dict:
 # ─── Node 6: Escalate ───────────────────────────────────────────────────────
 
 def escalate_to_human(state: SignalState) -> dict:
-    """Log escalation. In production, LangGraph interrupt() would pause here."""
+    """
+    Pause workflow using LangGraph interrupt() for human review.
+    If interrupt() is not available (e.g., no checkpointer), falls back to logging.
+    """
     reason = state.get("escalate_reason", "置信度不足")
     logger.warning("Signal ESCALATED: %s", reason)
 
@@ -271,21 +274,46 @@ def escalate_to_human(state: SignalState) -> dict:
         r.xadd("quant:alerts", {
             "type": "signal_escalated",
             "reason": reason,
+            "proposed_direction": state.get("signal", {}).get("direction", "N/A"),
+            "confidence": str(state.get("confidence", 0)),
             "timestamp": datetime.now(_CST).isoformat(),
         }, maxlen=1000)
     except Exception as e:
         logger.error("Failed to publish escalation alert: %s", e)
 
-    return {"escalated": True}
+    # Use LangGraph interrupt() when checkpointer is configured
+    try:
+        from langgraph.types import interrupt
+        human_response = interrupt({
+            "type": "signal_review",
+            "reason": reason,
+            "proposed_signal": state.get("signal"),
+            "reasoning_chain": state.get("reasoning_chain"),
+            "message": f"信号需要人工审核: {reason}",
+        })
+        if human_response and human_response.get("approved"):
+            return {"escalated": False}
+        return {
+            "escalated": True,
+            "escalate_reason": f"人工否决: {human_response.get('reason', '')}",
+        }
+    except Exception:
+        # No checkpointer or interrupt not supported — proceed with escalated=True
+        return {"escalated": True}
 
 
-# ─── Node 7: Persist Signal ─────────────────────────────────────────────────
+# ─── Node 7: Persist Signal (with A/B comparison) ───────────────────────────
 
 def persist_signal(state: SignalState) -> dict:
-    """Write signal to PostgreSQL signal_history for audit trail."""
+    """
+    Write both LLM signal and rule-based signal to PostgreSQL signal_history.
+    This enables A/B comparison between the two approaches.
+    """
     signal = state.get("signal", {})
     now = datetime.now(_CST)
+    persist_ok = False
 
+    # 1. Persist LLM signal
     try:
         with psycopg.connect(_DATABASE_URL) as conn:
             conn.execute(
@@ -309,8 +337,10 @@ def persist_signal(state: SignalState) -> dict:
             conn.commit()
         persist_ok = True
     except Exception as e:
-        logger.error("Failed to persist signal: %s", e)
-        persist_ok = False
+        logger.error("Failed to persist LLM signal: %s", e)
+
+    # 2. A/B: also run and persist rule-based signal for comparison
+    _persist_rule_based_signal(state, now)
 
     started = state.get("started_at", "")
     elapsed = 0
@@ -322,6 +352,54 @@ def persist_signal(state: SignalState) -> dict:
             pass
 
     return {"persist_ok": persist_ok, "elapsed_ms": elapsed}
+
+
+def _persist_rule_based_signal(state: SignalState, now: datetime) -> None:
+    """Run the rule-based factor signal engine and persist alongside LLM signal."""
+    try:
+        from src.factor_signal.engine import compute_factor_signal
+        ctx = state.get("market_context", {})
+
+        dce_m0 = ctx.get("dce_m0", {})
+        crush = ctx.get("crush", {})
+        cot = ctx.get("cot", {})
+
+        meal_close = _safe_float(dce_m0.get("close"))
+        crush_margin = _safe_float(crush.get("crush_margin_cny"))
+
+        if meal_close is None or meal_close <= 0:
+            return
+
+        rule_result = compute_factor_signal(meal_close)
+
+        direction_map = {"强烈做多": "bullish", "做多": "bullish",
+                         "观望偏多": "bullish", "观望": "neutral", "偏空": "bearish"}
+        direction = direction_map.get(rule_result.get("composite_signal", ""), "neutral")
+
+        with psycopg.connect(_DATABASE_URL) as conn:
+            conn.execute(
+                """INSERT INTO signal_history
+                   (time, signal_type, direction, confidence, composite_score,
+                    factors, reasoning_chain, escalated, escalate_reason, market_snapshot_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                (
+                    now,
+                    "rule_based",
+                    direction,
+                    1.0,
+                    rule_result.get("composite_score", 0),
+                    json.dumps(rule_result.get("factors", []), ensure_ascii=False),
+                    json.dumps(["rule_based_engine"], ensure_ascii=False),
+                    False,
+                    None,
+                    state.get("snapshot_id"),
+                ),
+            )
+            conn.commit()
+        logger.info("A/B: rule-based signal persisted (score=%s, direction=%s)",
+                     rule_result.get("composite_score"), direction)
+    except Exception as e:
+        logger.warning("A/B rule-based signal failed (non-fatal): %s", e)
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -102,6 +102,10 @@ def main():
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
+    # Start signal HTTP service for SynthesizeSignal / GetLatestSignal
+    from src.signal_agent.grpc_service import start_signal_service
+    start_signal_service()
+
     logger.info("Signal agent starting: interval=%dmin", interval_min)
     scheduler.start()
 

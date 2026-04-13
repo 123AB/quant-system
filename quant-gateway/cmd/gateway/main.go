@@ -12,6 +12,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"gopkg.in/yaml.v3"
 
+	"github.com/123AB/quant-gateway/internal/middleware"
 	"github.com/123AB/quant-gateway/internal/router"
 	"github.com/123AB/quant-gateway/internal/ws"
 )
@@ -98,6 +99,8 @@ func main() {
 		globalQPS = 5000
 	}
 
+	metrics := middleware.NewMetrics()
+
 	handler, err := router.NewRouter(router.Config{
 		BizServiceURL: cfg.Upstream.BizService,
 		BizTimeout:    bizTimeout,
@@ -106,6 +109,7 @@ func main() {
 		GlobalQPS:     globalQPS,
 		Hub:           hub,
 		WSPath:        cfg.WebSocket.Path,
+		Metrics:       metrics,
 	})
 	if err != nil {
 		log.Fatalf("Failed to create router: %v", err)

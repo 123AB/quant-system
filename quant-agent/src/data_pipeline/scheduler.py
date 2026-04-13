@@ -83,6 +83,10 @@ def main():
     signal.signal(signal.SIGTERM, _shutdown)
     signal.signal(signal.SIGINT, _shutdown)
 
+    # Start status HTTP server for health/status queries
+    from src.data_pipeline.grpc_service import start_status_server
+    start_status_server()
+
     logger.info(
         "Scheduler starting: trading=%ds, off-hours=%ds",
         trading_interval, off_hours_interval,
