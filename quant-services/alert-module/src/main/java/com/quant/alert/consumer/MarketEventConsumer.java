@@ -5,6 +5,7 @@ import com.quant.alert.service.AlertService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,7 +33,7 @@ public class MarketEventConsumer {
     public void consumeMarketEvents() {
         try {
             var records = redis.opsForStream().read(
-                    StreamOffset.from("quant:market_events", lastMarketId));
+                    StreamOffset.create("quant:market_events", ReadOffset.from(lastMarketId)));
             if (records == null) return;
 
             for (var record : records) {
