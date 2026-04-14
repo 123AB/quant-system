@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.UUID;
 
 @Data
 @Entity
@@ -40,5 +41,5 @@ public class SignalHistoryEntity {
     private String escalateReason;
 
     @Column(name = "market_snapshot_id")
-    private String marketSnapshotId;
+    private UUID marketSnapshotId;
 }
