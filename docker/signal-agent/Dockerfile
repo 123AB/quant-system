@@ -1,9 +1,9 @@
 FROM python:3.12-slim
 WORKDIR /app
-RUN pip install --no-cache-dir pip --upgrade
+RUN pip install --no-cache-dir --upgrade pip setuptools
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir . 2>/dev/null || pip install --no-cache-dir akshare redis psycopg[binary] pandas httpx apscheduler langgraph langchain-openai langchain-anthropic langchain-core
+RUN pip install --no-cache-dir .
 
 COPY src/ ./src/
 

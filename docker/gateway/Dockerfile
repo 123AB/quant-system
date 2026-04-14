@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /gateway ./cmd/gateway/main.go
 FROM alpine:3.19
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
-COPY --from=builder /gateway /app/gateway 2>/dev/null || true
+COPY --from=builder /gateway /app/gateway
 COPY configs/ /app/configs/
 EXPOSE 8080
 ENV TZ=Asia/Shanghai

@@ -50,6 +50,7 @@ CREATE INDEX idx_alert_rules_metric ON alert_rules(metric)   WHERE is_active = t
 -- ======================== TimescaleDB Hypertables ========================
 
 CREATE TABLE market_quotes (
+    id           BIGSERIAL,
     time         TIMESTAMPTZ NOT NULL,
     source       VARCHAR(20) NOT NULL,
     symbol       VARCHAR(20) NOT NULL,
@@ -68,6 +69,7 @@ CREATE INDEX idx_mq_source      ON market_quotes(source, time DESC);
 SELECT add_retention_policy('market_quotes', INTERVAL '2 years');
 
 CREATE TABLE crush_margin_history (
+    id                BIGSERIAL,
     time              TIMESTAMPTZ NOT NULL,
     meal_price        DECIMAL(10,2),
     oil_price         DECIMAL(10,2),
@@ -84,6 +86,7 @@ CREATE INDEX idx_crush_time ON crush_margin_history(time DESC);
 SELECT add_retention_policy('crush_margin_history', INTERVAL '5 years');
 
 CREATE TABLE signal_history (
+    id                 BIGSERIAL,
     time               TIMESTAMPTZ NOT NULL,
     signal_type        VARCHAR(30) NOT NULL,
     direction          VARCHAR(10) NOT NULL,
@@ -100,6 +103,7 @@ CREATE INDEX idx_signal_type_time ON signal_history(signal_type, time DESC);
 CREATE INDEX idx_signal_escalated ON signal_history(escalated, time DESC) WHERE escalated = true;
 
 CREATE TABLE lof_premium_history (
+    id               BIGSERIAL,
     time             TIMESTAMPTZ NOT NULL,
     fund_code        VARCHAR(10) NOT NULL,
     fund_name        VARCHAR(100),
