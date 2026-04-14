@@ -107,14 +107,20 @@ public class SoyService {
     @SuppressWarnings("unchecked")
     public Map<String, Object> getWasde() {
         String json = redis.opsForValue().get("soy:usda:world");
-        if (json == null || json.isBlank()) return Map.of("wasde", Map.of());
-        try {
-            Map<String, Object> data = objectMapper.readValue(json, Map.class);
-            return Map.of("wasde", data);
-        } catch (Exception e) {
-            log.warn("Failed to parse USDA world data: {}", e.getMessage());
-            return Map.of("wasde", Map.of(), "error", e.getMessage());
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (json != null && !json.isBlank()) {
+            try {
+                result.put("world_balance", objectMapper.readValue(json, Map.class));
+            } catch (Exception e) {
+                log.warn("Failed to parse USDA world data: {}", e.getMessage());
+                result.put("world_balance", Map.of());
+            }
+        } else {
+            result.put("world_balance", Map.of());
         }
+        result.put("source", "USDA FAS PSD Online");
+        result.put("unit", "千吨");
+        return result;
     }
 
     /**
@@ -123,14 +129,20 @@ public class SoyService {
     @SuppressWarnings("unchecked")
     public Map<String, Object> getChinaImports() {
         String json = redis.opsForValue().get("soy:usda:china");
-        if (json == null || json.isBlank()) return Map.of("china_imports", List.of());
-        try {
-            List<Object> data = objectMapper.readValue(json, List.class);
-            return Map.of("china_imports", data);
-        } catch (Exception e) {
-            log.warn("Failed to parse USDA China data: {}", e.getMessage());
-            return Map.of("china_imports", List.of(), "error", e.getMessage());
+        Map<String, Object> result = new LinkedHashMap<>();
+        if (json != null && !json.isBlank()) {
+            try {
+                result.put("china_imports", objectMapper.readValue(json, List.class));
+            } catch (Exception e) {
+                log.warn("Failed to parse USDA China data: {}", e.getMessage());
+                result.put("china_imports", List.of());
+            }
+        } else {
+            result.put("china_imports", List.of());
         }
+        result.put("source", "USDA FAS PSD Online");
+        result.put("unit", "千吨");
+        return result;
     }
 
     /**
