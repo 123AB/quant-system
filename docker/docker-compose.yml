@@ -104,6 +104,27 @@ services:
     networks:
       - quant-net
 
+  fund-pipeline:
+    build:
+      context: ../quant-agent
+      dockerfile: ../docker/fund-pipeline/Dockerfile
+    container_name: quant-fund-pipeline
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quant}:${POSTGRES_PASSWORD:-quant_dev_2026}@postgres:5432/${POSTGRES_DB:-quant}
+      FUND_INTERVAL_TRADING: "30"
+      FUND_INTERVAL_OFF_HOURS: "300"
+      FUND_DATA_TTL: "120"
+      TZ: Asia/Shanghai
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - quant-net
+
   signal-agent:
     build:
       context: ../quant-agent

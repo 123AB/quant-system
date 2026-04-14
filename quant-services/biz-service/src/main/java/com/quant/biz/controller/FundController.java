@@ -16,8 +16,8 @@ public class FundController {
     private final FundService fundService;
 
     @GetMapping("/list")
-    public List<FundConfigEntity> list(@RequestParam(defaultValue = "true") boolean activeOnly) {
-        return fundService.listFunds(activeOnly);
+    public List<Map<String, Object>> list(@RequestParam(defaultValue = "true") boolean activeOnly) {
+        return fundService.listFundsLive(activeOnly);
     }
 
     @GetMapping("/{code}")
