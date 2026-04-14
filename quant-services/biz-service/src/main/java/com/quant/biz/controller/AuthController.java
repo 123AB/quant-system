@@ -15,8 +15,16 @@ public class AuthController {
 
     @PostMapping("/register")
     public Map<String, Object> register(@RequestBody Map<String, String> body) {
-        return userService.register(
-                body.get("username"), body.get("password"), body.get("email"));
+        String username = body.get("username");
+        String password = body.get("password");
+        String email = body.getOrDefault("email", username + "@quant.local");
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("username is required");
+        }
+        if (password == null || password.length() < 6) {
+            throw new IllegalArgumentException("password must be at least 6 characters");
+        }
+        return userService.register(username, password, email);
     }
 
     @PostMapping("/login")
