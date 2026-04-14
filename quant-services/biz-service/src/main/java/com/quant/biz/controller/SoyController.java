@@ -50,6 +50,31 @@ public class SoyController {
         return soyService.getHistory(symbol, days);
     }
 
+    @GetMapping("/cot")
+    public Map<String, Object> cot() {
+        return soyService.getCot();
+    }
+
+    @GetMapping("/wasde")
+    public Map<String, Object> wasde() {
+        return soyService.getWasde();
+    }
+
+    @GetMapping("/china-imports")
+    public Map<String, Object> chinaImports() {
+        return soyService.getChinaImports();
+    }
+
+    @GetMapping("/inventory")
+    public Map<String, Object> inventory() {
+        return soyService.getInventory();
+    }
+
+    @GetMapping("/factor-signal")
+    public Map<String, Object> factorSignal() {
+        return soyService.getFactorSignal();
+    }
+
     @PostMapping("/refresh")
     public Map<String, Object> refresh() {
         List<String> cleared = soyService.refreshCache();

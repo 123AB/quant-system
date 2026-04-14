@@ -74,10 +74,11 @@ class CrossValidatePhase(BasePhase):
             validated["crush"] = None
             warnings.append("Insufficient data for crush margin calculation")
 
-        # 5. COT + USDA (pass through, low priority)
+        # 5. COT + USDA + Inventory (pass through, low priority)
         validated["cot"] = raw.get("cot", {}).get("cot", {})
         validated["usda_world"] = raw.get("usda", {}).get("usda_world", {})
         validated["usda_china"] = raw.get("usda", {}).get("usda_china", [])
+        validated["inventory"] = raw.get("inventory", {}).get("inventory", {})
 
         state.validated_data = validated
 

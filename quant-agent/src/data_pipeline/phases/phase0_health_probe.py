@@ -1,33 +1,45 @@
 """
 Phase 0: Health probe — check data source reachability before fetching.
 
-Light-weight HEAD or small GET requests to verify Sina, akshare, USDA are up.
+Light-weight GET requests to verify Sina, akshare, USDA are up.
+Uses httpx with proper headers to avoid anti-bot blocks.
 """
 
 from __future__ import annotations
 
 import logging
-import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+
+import httpx
 
 from src.data_pipeline.state import WorkflowState, PhaseResult, Phase
 from .base_phase import BasePhase
 
 logger = logging.getLogger(__name__)
 
-_PROBES = {
-    "sina": "https://hq.sinajs.cn/list=nf_M0",
-    "usda": "https://apps.fas.usda.gov/PSDOnlineDataServices/api/CommodityData/GetCommodityGroups",
+_SINA_HEADERS = {
+    "Referer": "http://finance.sina.com.cn",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36",
 }
 
-_TIMEOUT = 10
+_PROBES = {
+    "sina": {
+        "url": "http://hq.sinajs.cn/list=nf_M0",
+        "headers": _SINA_HEADERS,
+        "timeout": 10,
+    },
+    "usda": {
+        "url": "https://apps.fas.usda.gov/PSDOnlineDataServices/api/CommodityData/GetCommodityGroups",
+        "headers": {"Accept": "application/json", "User-Agent": "quant-pipeline/1.0"},
+        "timeout": 20,
+    },
+}
 
 
-def _probe_url(name: str, url: str) -> tuple[str, bool, str]:
+def _probe_url(name: str, cfg: dict) -> tuple[str, bool, str]:
     try:
-        req = urllib.request.Request(url, method="GET", headers={"User-Agent": "quant-pipeline/1.0"})
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-            return name, resp.status < 400, ""
+        resp = httpx.get(cfg["url"], headers=cfg["headers"], timeout=cfg["timeout"])
+        return name, resp.status_code < 400, ""
     except Exception as e:
         return name, False, str(e)
 
@@ -51,7 +63,7 @@ class HealthProbePhase(BasePhase):
         errors: list[str] = []
 
         with ThreadPoolExecutor(max_workers=4) as pool:
-            futures = {pool.submit(_probe_url, name, url): name for name, url in _PROBES.items()}
+            futures = {pool.submit(_probe_url, name, cfg): name for name, cfg in _PROBES.items()}
             futures[pool.submit(_probe_akshare)] = "akshare"
 
             for fut in as_completed(futures, timeout=15):

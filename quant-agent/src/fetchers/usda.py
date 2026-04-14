@@ -1,8 +1,8 @@
 """USDA FAS PSD Online API fetchers."""
 
-import json
 import logging
-import urllib.request
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -11,9 +11,9 @@ _API_BASE = "https://apps.fas.usda.gov/PSDOnlineDataServices/api"
 
 def _usda_get(path: str) -> list:
     url = f"{_API_BASE}/{path}"
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=20) as r:
-        return json.loads(r.read())
+    resp = httpx.get(url, headers={"Accept": "application/json"}, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
 
 def fetch_usda_world_psd() -> dict:

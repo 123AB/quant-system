@@ -19,6 +19,7 @@ from src.fetchers import (
     fetch_usda_world_psd,
     fetch_usda_china_imports,
     fetch_cot,
+    fetch_dce_inventory,
 )
 from .base_phase import BasePhase
 
@@ -51,12 +52,17 @@ def _fetch_usda() -> dict:
     return {"usda_world": world, "usda_china": china}
 
 
+def _fetch_inventory() -> dict:
+    return {"inventory": fetch_dce_inventory()}
+
+
 _SOURCES: list[tuple[str, Any]] = [
     ("dce", _fetch_dce),
     ("cbot", _fetch_cbot),
     ("fx", _fetch_fx),
     ("cot", _fetch_cot_data),
     ("usda", _fetch_usda),
+    ("inventory", _fetch_inventory),
 ]
 
 

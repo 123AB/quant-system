@@ -87,6 +87,85 @@ public class SoyService {
     }
 
     /**
+     * Read COT positioning from Redis (written by Python data-pipeline).
+     */
+    public Map<String, Object> getCot() {
+        Map<Object, Object> raw = redis.opsForHash().entries("soy:cot:latest");
+        if (raw.isEmpty()) return Map.of("cot", Map.of());
+        Map<String, Object> cot = new LinkedHashMap<>();
+        for (var entry : raw.entrySet()) {
+            String key = entry.getKey().toString();
+            String val = entry.getValue().toString();
+            cot.put(key, parseValue(val));
+        }
+        return Map.of("cot", cot);
+    }
+
+    /**
+     * Read USDA world soybean supply/demand from Redis.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getWasde() {
+        String json = redis.opsForValue().get("soy:usda:world");
+        if (json == null || json.isBlank()) return Map.of("wasde", Map.of());
+        try {
+            Map<String, Object> data = objectMapper.readValue(json, Map.class);
+            return Map.of("wasde", data);
+        } catch (Exception e) {
+            log.warn("Failed to parse USDA world data: {}", e.getMessage());
+            return Map.of("wasde", Map.of(), "error", e.getMessage());
+        }
+    }
+
+    /**
+     * Read USDA China imports from Redis.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getChinaImports() {
+        String json = redis.opsForValue().get("soy:usda:china");
+        if (json == null || json.isBlank()) return Map.of("china_imports", List.of());
+        try {
+            List<Object> data = objectMapper.readValue(json, List.class);
+            return Map.of("china_imports", data);
+        } catch (Exception e) {
+            log.warn("Failed to parse USDA China data: {}", e.getMessage());
+            return Map.of("china_imports", List.of(), "error", e.getMessage());
+        }
+    }
+
+    /**
+     * Read DCE warehouse inventory from Redis.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getInventory() {
+        String json = redis.opsForValue().get("soy:inventory:latest");
+        if (json == null || json.isBlank()) return Map.of("inventory", Map.of());
+        try {
+            Map<String, Object> data = objectMapper.readValue(json, Map.class);
+            return Map.of("inventory", data);
+        } catch (Exception e) {
+            log.warn("Failed to parse inventory data: {}", e.getMessage());
+            return Map.of("inventory", Map.of(), "error", e.getMessage());
+        }
+    }
+
+    /**
+     * Read factor signal from Redis.
+     */
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getFactorSignal() {
+        String json = redis.opsForValue().get("soy:factor_signal:latest");
+        if (json == null || json.isBlank()) return Map.of("signal", Map.of());
+        try {
+            Map<String, Object> data = objectMapper.readValue(json, Map.class);
+            return data;
+        } catch (Exception e) {
+            log.warn("Failed to parse factor signal: {}", e.getMessage());
+            return Map.of("signal", Map.of(), "error", e.getMessage());
+        }
+    }
+
+    /**
      * Clear all soy-related Redis caches.
      */
     public List<String> refreshCache() {
@@ -97,6 +176,13 @@ public class SoyService {
             cleared.addAll(keys);
         }
         return cleared;
+    }
+
+    private static Object parseValue(String val) {
+        if (val == null) return null;
+        try { return Long.parseLong(val); } catch (NumberFormatException ignored) {}
+        try { return Double.parseDouble(val); } catch (NumberFormatException ignored) {}
+        return val;
     }
 
     private static BigDecimal bd(Object v) {

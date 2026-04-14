@@ -54,6 +54,7 @@ def _build_market_context(validated: dict) -> dict:
         "cot": validated.get("cot"),
         "usda_world": validated.get("usda_world"),
         "usda_china": validated.get("usda_china"),
+        "inventory": validated.get("inventory", {}),
     }
 
 
@@ -143,6 +144,28 @@ def _write_redis(ctx: dict) -> None:
     if cot:
         r.hset("soy:cot:latest", mapping={k: str(v) for k, v in cot.items()})
         r.expire("soy:cot:latest", 86400)
+
+    usda_world = ctx.get("usda_world")
+    if usda_world:
+        r.set("soy:usda:world", json.dumps(usda_world, default=str), ex=21600)
+
+    usda_china = ctx.get("usda_china")
+    if usda_china:
+        r.set("soy:usda:china", json.dumps(usda_china, default=str), ex=21600)
+
+    inventory = ctx.get("inventory")
+    if inventory:
+        r.set("soy:inventory:latest", json.dumps(inventory, default=str), ex=7200)
+
+    # Factor signal (computed from live basis + panel)
+    try:
+        from src.factor_signal.engine import compute_signal
+        signal = compute_signal()
+        if signal and "error" not in signal:
+            r.set("soy:factor_signal:latest", json.dumps(signal, default=str), ex=1800)
+            logger.info("Redis: cached factor signal (score=%s)", signal.get("composite_score"))
+    except Exception as e:
+        logger.warning("Factor signal computation failed: %s", e)
 
     # Full context JSON
     r.set("market:context:latest", json.dumps(ctx, default=str), ex=120)
