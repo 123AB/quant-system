@@ -6,18 +6,18 @@ import akshare as ak
 logger = logging.getLogger(__name__)
 
 _PRODUCTS = {
-    "M": {"name": "豆粕"},
-    "Y": {"name": "豆油"},
-    "A": {"name": "黄大豆一号"},
+    "豆粕": {"key": "M", "name": "豆粕"},
+    "豆油": {"key": "Y", "name": "豆油"},
+    "豆一": {"key": "A", "name": "黄大豆一号"},
 }
 
 
 def fetch_dce_inventory() -> dict:
     """Fetch DCE warehouse receipt inventory for soybean products."""
     result = {}
-    for symbol, meta in _PRODUCTS.items():
+    for cn_name, meta in _PRODUCTS.items():
         try:
-            df = ak.futures_inventory_em(symbol=symbol)
+            df = ak.futures_inventory_em(symbol=cn_name)
             if df is None or df.empty:
                 continue
             df = df.sort_values("日期").reset_index(drop=True)
@@ -31,12 +31,12 @@ def fetch_dce_inventory() -> dict:
                     "change": chg,
                 })
             latest = records[-1] if records else None
-            result[symbol] = {
+            result[meta["key"]] = {
                 "name": meta["name"],
                 "records": records,
                 "latest": latest,
             }
         except Exception as e:
-            logger.warning("DCE inventory %s failed: %s", symbol, e)
-            result[symbol] = {"name": meta["name"], "records": [], "latest": None, "error": str(e)}
+            logger.warning("DCE inventory %s failed: %s", cn_name, e)
+            result[meta["key"]] = {"name": meta["name"], "records": [], "latest": None, "error": str(e)}
     return result

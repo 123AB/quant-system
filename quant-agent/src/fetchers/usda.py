@@ -11,7 +11,7 @@ _API_BASE = "https://apps.fas.usda.gov/PSDOnlineDataServices/api"
 
 def _usda_get(path: str) -> list:
     url = f"{_API_BASE}/{path}"
-    resp = httpx.get(url, headers={"Accept": "application/json"}, timeout=30)
+    resp = httpx.get(url, headers={"Accept": "application/json"}, timeout=15)
     resp.raise_for_status()
     return resp.json()
 

@@ -73,18 +73,25 @@ class ParallelFetchPhase(BasePhase):
         raw: dict[str, Any] = {}
         errors: list[str] = []
 
-        with ThreadPoolExecutor(max_workers=5) as pool:
+        with ThreadPoolExecutor(max_workers=6) as pool:
             future_map = {pool.submit(fn): name for name, fn in _SOURCES}
-            for fut in as_completed(future_map, timeout=_TIMEOUT + 5):
-                name = future_map[fut]
-                try:
-                    result = fut.result(timeout=_TIMEOUT)
-                    raw[name] = result
-                    logger.info("Fetched %s: %d keys", name, len(result))
-                except Exception as e:
-                    errors.append(f"{name}: {e}")
-                    raw[name] = {"error": str(e)}
-                    logger.warning("Fetch %s failed: %s", name, e)
+            try:
+                for fut in as_completed(future_map, timeout=_TIMEOUT + 10):
+                    name = future_map[fut]
+                    try:
+                        result = fut.result(timeout=_TIMEOUT)
+                        raw[name] = result
+                        logger.info("Fetched %s: %d keys", name, len(result))
+                    except Exception as e:
+                        errors.append(f"{name}: {e}")
+                        raw[name] = {"error": str(e)}
+                        logger.warning("Fetch %s failed: %s", name, e)
+            except TimeoutError:
+                for fut, name in future_map.items():
+                    if name not in raw:
+                        errors.append(f"{name}: fetch timed out")
+                        raw[name] = {"error": "timed out"}
+                        logger.warning("Fetch %s timed out", name)
 
         state.raw_payloads = raw
 
