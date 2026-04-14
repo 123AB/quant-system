@@ -66,14 +66,22 @@ class HealthProbePhase(BasePhase):
             futures = {pool.submit(_probe_url, name, cfg): name for name, cfg in _PROBES.items()}
             futures[pool.submit(_probe_akshare)] = "akshare"
 
-            for fut in as_completed(futures, timeout=15):
-                name, ok, err = fut.result()
-                results[name] = ok
-                if not ok:
-                    errors.append(f"{name}: {err}")
-                    logger.warning("Health probe %s failed: %s", name, err)
+            try:
+                for fut in as_completed(futures, timeout=25):
+                    name, ok, err = fut.result()
+                    results[name] = ok
+                    if not ok:
+                        errors.append(f"{name}: {err}")
+                        logger.warning("Health probe %s failed: %s", name, err)
+            except TimeoutError:
+                for fut, name in futures.items():
+                    if name not in results:
+                        results[name] = False
+                        errors.append(f"{name}: probe timed out")
+                        logger.warning("Health probe %s timed out", name)
 
         state.health_probes = results
+        total = len(_PROBES) + 1
         failed_count = sum(1 for v in results.values() if not v)
 
         if failed_count >= 2:
