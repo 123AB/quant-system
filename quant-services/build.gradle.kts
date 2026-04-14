@@ -23,8 +23,9 @@ subprojects {
 
     dependencies {
         "implementation"(platform("org.springframework.boot:spring-boot-dependencies:3.4.4"))
-        "compileOnly"("org.projectlombok:lombok")
-        "annotationProcessor"("org.projectlombok:lombok")
+        "annotationProcessor"(platform("org.springframework.boot:spring-boot-dependencies:3.4.4"))
+        "compileOnly"("org.projectlombok:lombok:1.18.34")
+        "annotationProcessor"("org.projectlombok:lombok:1.18.34")
     }
 
     tasks.withType<JavaCompile> {
